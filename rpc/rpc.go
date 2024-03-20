@@ -48,13 +48,13 @@ func DecodeMessage(msg []byte) (string, []byte, error) {
 	return baseMessage.Method, content[:contentLength], nil
 }
 
-func Split(data []byte, _ bool)(advance int, token []byte, err error){
+func Split(data []byte, _ bool) (advance int, token []byte, err error) {
 	header, content, isFound := bytes.Cut(data, []byte{'\r', '\n', '\r', '\n'})
 
 	// if seperator isn't found
 	if !isFound {
 		return 0, nil, errors.New("did not find seperator")
-  }
+	}
 
 	// Parsing the header Content-Length: <number>
 	contentLenBytes := header[len("Content-Length: "):]
@@ -65,11 +65,11 @@ func Split(data []byte, _ bool)(advance int, token []byte, err error){
 		return 0, nil, err
 	}
 
-  // Stream didn't read enough items
-  if len(content) < contentLength{
-    return 0, nil, nil
-  }
+	// Stream didn't read enough items
+	if len(content) < contentLength {
+		return 0, nil, nil
+	}
 
-  totalLen := len(header) + 4 + contentLength
-  return totalLen, data[:totalLen], nil
+	totalLen := len(header) + 4 + contentLength
+	return totalLen, data[:totalLen], nil
 }

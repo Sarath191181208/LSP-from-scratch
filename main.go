@@ -71,16 +71,16 @@ func handleMessage(writer io.Writer, logger *log.Logger, method string, contents
 			logger.Printf("Parsing failed due to %s", err)
 		}
 		logger.Printf("Opened: %s", req.Params.TextDoc.URI)
-    msg := lsp.HoverResponse{
-      Response: lsp.Response{
-        RPC: "2.0",
-        ID: &req.ID,
-      },  
-      Result: lsp.HoverResult{
-        Contents: "Hello, there this is test_lsp",
-      },
-    }
-    writeLSP(writer, msg)
+		msg := lsp.HoverResponse{
+			Response: lsp.Response{
+				RPC: "2.0",
+				ID:  &req.ID,
+			},
+			Result: lsp.HoverResult{
+				Contents: "Hello, there this is test_lsp",
+			},
+		}
+		writeLSP(writer, msg)
 	}
 }
 
