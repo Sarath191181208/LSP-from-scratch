@@ -35,3 +35,6 @@ vim.api.nvim_create_autocmd('FileType', {
   end
 })
 ```
+
+## References 
+- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17
