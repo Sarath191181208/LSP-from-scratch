@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"log"
 	"os"
 
@@ -14,6 +15,7 @@ import (
 func main() {
 	logger := getLogger("/tmp/lsp_from_scratch/log.txt")
 	scanner := bufio.NewScanner(os.Stdin)
+	writer := os.Stdout
 	state := analysis.NewState()
 	logger.Println("Started lsp pcs")
 	scanner.Split(rpc.Split)
@@ -25,11 +27,11 @@ func main() {
 			logger.Printf("Got an error %s", err)
 			continue
 		}
-		handleMessage(logger, method, contents, state)
+		handleMessage(writer, logger, method, contents, state)
 	}
 }
 
-func handleMessage(logger *log.Logger, method string, contents []byte, state analysis.State) {
+func handleMessage(writer io.Writer, logger *log.Logger, method string, contents []byte, state analysis.State) {
 	logger.Printf("received msg with method: %s", method)
 
 	switch method {
@@ -44,9 +46,7 @@ func handleMessage(logger *log.Logger, method string, contents []byte, state ana
 			req.Params.ClientInfo.Version)
 
 		msg := lsp.NewInitalizeresponse(req.ID)
-		reply := rpc.EncodeMessage(msg)
-		writer := os.Stdout
-		writer.Write([]byte(reply))
+		writeLSP(writer, msg)
 		logger.Print("Sent reply")
 
 	case "textDocument/didOpen":
@@ -63,8 +63,24 @@ func handleMessage(logger *log.Logger, method string, contents []byte, state ana
 		}
 		logger.Printf("Opened: %s", req.Params.TextDocument.URI)
 		for _, change := range req.Params.ContentChanges {
-      state.OpenDocument(req.Params.TextDocument.URI, change.Text)
+			state.OpenDocument(req.Params.TextDocument.URI, change.Text)
 		}
+	case "textDocument/hover":
+		var req lsp.HoverRequest
+		if err := json.Unmarshal(contents, &req); err != nil {
+			logger.Printf("Parsing failed due to %s", err)
+		}
+		logger.Printf("Opened: %s", req.Params.TextDoc.URI)
+    msg := lsp.HoverResponse{
+      Response: lsp.Response{
+        RPC: "2.0",
+        ID: &req.ID,
+      },  
+      Result: lsp.HoverResult{
+        Contents: "Hello, there this is test_lsp",
+      },
+    }
+    writeLSP(writer, msg)
 	}
 }
 
@@ -75,4 +91,9 @@ func getLogger(filename string) *log.Logger {
 	}
 
 	return log.New(logfile, "[test_lsp]", log.Ldate|log.Ltime)
+}
+
+func writeLSP(writer io.Writer, msg any) {
+	reply := rpc.EncodeMessage(msg)
+	writer.Write([]byte(reply))
 }
