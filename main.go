@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	analysis "lsp_from_scratch/compiler"
 	"lsp_from_scratch/lsp"
 	"lsp_from_scratch/rpc"
 )
@@ -13,6 +14,7 @@ import (
 func main() {
 	logger := getLogger("/tmp/lsp_from_scratch/log.txt")
 	scanner := bufio.NewScanner(os.Stdin)
+	state := analysis.NewState()
 	logger.Println("Started lsp pcs")
 	scanner.Split(rpc.Split)
 
@@ -23,19 +25,47 @@ func main() {
 			logger.Printf("Got an error %s", err)
 			continue
 		}
-		handleMessage(logger, method, contents)
+		handleMessage(logger, method, contents, state)
 	}
 }
 
-func handleMessage(logger *log.Logger, method string, contents []byte) {
+func handleMessage(logger *log.Logger, method string, contents []byte, state analysis.State) {
 	logger.Printf("received msg with method: %s", method)
 
-	var req lsp.InitializeRequest
-	if err := json.Unmarshal(contents, &req); err != nil {
-		logger.Printf("Parsing failed due to %s", err)
-	}
+	switch method {
+	case "initialize":
+		var req lsp.InitializeRequest
+		if err := json.Unmarshal(contents, &req); err != nil {
+			logger.Printf("Parsing failed due to %s", err)
+		}
 
-	logger.Printf("Connected to %s %s", req.Params.ClientInfo.Name, req.Params.ClientInfo.Version)
+		logger.Printf("Connected to %s %s",
+			req.Params.ClientInfo.Name,
+			req.Params.ClientInfo.Version)
+
+		msg := lsp.NewInitalizeresponse(req.ID)
+		reply := rpc.EncodeMessage(msg)
+		writer := os.Stdout
+		writer.Write([]byte(reply))
+		logger.Print("Sent reply")
+
+	case "textDocument/didOpen":
+		var req lsp.DidOpenTextDocumentNotification
+		if err := json.Unmarshal(contents, &req); err != nil {
+			logger.Printf("Parsing failed due to %s", err)
+		}
+		logger.Printf("Opened: %s", req.Params.TextDocument.URI)
+		state.OpenDocument(req.Params.TextDocument.URI, req.Params.TextDocument.Text)
+	case "textDocument/didChange":
+		var req lsp.TextDocDidChangeNotif
+		if err := json.Unmarshal(contents, &req); err != nil {
+			logger.Printf("Parsing failed due to %s", err)
+		}
+		logger.Printf("Opened: %s", req.Params.TextDocument.URI)
+		for _, change := range req.Params.ContentChanges {
+      state.OpenDocument(req.Params.TextDocument.URI, change.Text)
+		}
+	}
 }
 
 func getLogger(filename string) *log.Logger {
